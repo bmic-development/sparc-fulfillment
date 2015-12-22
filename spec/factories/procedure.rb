@@ -32,6 +32,8 @@ FactoryGirl.define do
     end
 
     trait :unstarted do
+      status 'unstarted'
+      completed_date nil
     end
 
     trait :with_notes do

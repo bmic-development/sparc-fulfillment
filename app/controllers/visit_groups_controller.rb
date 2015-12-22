@@ -39,16 +39,11 @@ class VisitGroupsController < ApplicationController
     @arm = @visit_group.arm
     @visit_groups = @arm.visit_groups.paginate(page: @current_page)
     @schedule_tab = params[:schedule_tab]
-    if @arm.visit_count == 1
-      @visit_group.errors.add(:arm, "must have at least one visit. Add another visit before deleting this one")
-      @errors = @visit_group.errors
-    elsif @visit_group.appointments.map{|a| a.has_completed_procedures?}.include?(true)
-      @visit_group.errors.add(:visit_group, "'#{@visit_group.name}' has completed procedures and cannot be deleted")
-      @errors = @visit_group.errors
-    else
-      @arm.update_attributes(visit_count: @arm.visit_count - 1)
+
+    if @visit_group.destroy
       flash.now[:alert] = t(:visit_groups)[:deleted]
-      @visit_group.destroy
+    else
+      @errors = @visit_group.errors
     end
   end
 

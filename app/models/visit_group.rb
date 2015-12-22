@@ -7,13 +7,15 @@ class VisitGroup < ActiveRecord::Base
 
   include CustomPositioning #custom methods around positioning, acts_as_list
 
-  before_destroy :check_for_completed_data
-
   belongs_to :arm
 
-  has_many :visits, :dependent => :destroy
+  has_many :visits, dependent: :destroy
   has_many :line_items, through: :arm
   has_many :appointments
+
+  before_destroy :check_arm_visit_count
+  after_destroy :decrement_visit_count
+  after_destroy :remove_appointments
 
   default_scope {order(:position)}
 
@@ -32,9 +34,21 @@ class VisitGroup < ActiveRecord::Base
     visits.joins(:line_item).group(:service_id).sum(:insurance_billing_qty)
   end
 
+
   private
 
-  def check_for_completed_data
-    self.appointments.each{ |appt| appt.destroy_if_incomplete }
+  def check_arm_visit_count
+    if arm.visit_count == 1
+      self.errors[:base] << "Arm must have at least one visit. Add another visit before deleting this one"
+      return false
+    end
+  end
+
+  def decrement_visit_count
+    arm.decrement(:visit_count)
+  end
+
+  def remove_appointments
+    appointments.each{|appointment| appointment.try(:destroy)}
   end
 end

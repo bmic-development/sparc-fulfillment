@@ -18,8 +18,10 @@ class Appointment < ActiveRecord::Base
   belongs_to :arm, -> { with_deleted }
 
   has_many :appointment_statuses, dependent: :destroy
-  has_many :procedures
+  has_many :procedures, dependent: :destroy
   has_many :notes, as: :notable
+
+  before_destroy :check_for_procedure_data, prepend: true
 
   scope :completed, -> { where('completed_date IS NOT NULL') }
   scope :unstarted, -> { where('appointments.start_date IS NULL AND appointments.completed_date IS NULL') }
@@ -37,12 +39,12 @@ class Appointment < ActiveRecord::Base
     start_date.present?
   end
 
-  def can_finish?
-    !start_date.blank? && (procedures.all? { |proc| !proc.unstarted? })
+  def completed?
+    completed_date.present?
   end
 
-  def has_completed_procedures?
-    procedures.any?(&:completed_date)
+  def can_finish?
+    !start_date.blank? && (procedures.all? { |proc| !proc.unstarted? })
   end
 
   def procedures_grouped_by_core
@@ -51,12 +53,6 @@ class Appointment < ActiveRecord::Base
 
   def set_completed_date
     self.completed_date = Time.now
-  end
-
-  def destroy_if_incomplete
-    if not (completed_date || has_completed_procedures?)
-      self.destroy
-    end
   end
 
   def initialize_procedures
@@ -87,6 +83,21 @@ class Appointment < ActiveRecord::Base
           end
         end
       end
+    end
+  end
+
+  private
+
+  def check_for_procedure_data
+    #If any procedures are NOT unstarted (have data), we won't delete the appointment, and by extension, the procedures.
+    if completed?
+      self.errors[:base] << "This appointment is completed, and cannot be deleted"
+      return false
+    elsif procedures.any?{|procedure| !procedure.unstarted?}
+      self.errors[:base] << "This appointment has existing procedure data, and cannot be deleted."
+      return false
+    else
+      return true
     end
   end
 

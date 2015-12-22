@@ -49,13 +49,14 @@ class MultipleLineItemsController < ApplicationController
       @arm_ids = [params[:remove_service_arm_ids]].flatten
       line_items = @arm_ids.map{ |arm_id| LineItem.where("arm_id = #{arm_id} AND service_id = #{@service.id}").first } # get line_items to delete
       @line_item_ids = line_items.map(&:id)
+
       line_items.each do |li|
-        if li.visit_groups.map(&:appointments).flatten.map{|a| a.has_completed_procedures?}.include?(true) # don't delete if line_item has completed procedures
-          @service.errors.add(:service, "'#{li.name}' on Arm '#{li.arm.name}' has completed procedures and cannot be deleted")
+        unless li.destroy
+          @service.errors << li.errors
         end
       end
+
       unless @service.errors.present?
-        line_items.each{ |li| li.destroy }
         flash.now[:success] = t(:services)[:deleted]
       else
         @errors = @service.errors

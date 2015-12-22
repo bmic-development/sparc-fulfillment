@@ -27,6 +27,7 @@ class LineItem < ActiveRecord::Base
 
   after_create :create_line_item_components
   after_create :increment_sparc_service_counter
+  before_destroy :check_for_visit_data, prepend: true
   after_destroy :decrement_sparc_service_counter
 
   def set_name
@@ -97,6 +98,14 @@ class LineItem < ActiveRecord::Base
         Component.create(composable_type: 'LineItem', composable_id: id, component: component, position: position)
         position += 1
       end
+    end
+  end
+
+  def check_for_visit_data
+    #If any procedures are NOT unstarted (have data), we won't delete the line_item, and by extension the procedures.
+    if !one_time_fee && visits.map(&:procedures).flatten.any?{|procedure| !procedure.unstarted?}
+      self.errors[:base] << "#{service.name} on #{arm.name} has existing procedure data, and cannot be deleted."
+      return false
     end
   end
 end

@@ -12,13 +12,14 @@ class Participant < ActiveRecord::Base
   belongs_to :protocol
   belongs_to :arm
 
-  has_many :appointments
+  has_many :appointments, dependent: :destroy
   has_many :procedures, through: :appointments
   has_many :notes, as: :notable
 
   delegate :srid,
            to: :protocol
 
+  before_destroy :check_for_appointment_data, prepend: true
   after_save :update_faye
   after_destroy :update_faye
 
@@ -86,8 +87,8 @@ class Participant < ActiveRecord::Base
   end
 
   def update_appointments_on_arm_change
-    self.appointments.each{ |appt| appt.destroy_if_incomplete }
-    self.build_appointments
+    appointments.destroy_all
+    build_appointments
   end
 
   def full_name
@@ -123,4 +124,13 @@ class Participant < ActiveRecord::Base
       self.appointments.create(visit_group_id: vg.id, visit_group_position: vg.position, position: self.appointments.count + 1, name: vg.name, arm_id: vg.arm_id)
     end
   end
+
+  def check_for_appointment_data
+    #If any procedures are NOT unstarted (have data), we won't delete the participant, and by extension, the appointment, or procedures either.
+    if procedures.any?{|procedure| !procedure.unstarted}
+      self.errors[:base] << "This participant has existing procedure data, and cannot be deleted."
+      return false
+    end
+  end
+
 end

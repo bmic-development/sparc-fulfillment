@@ -11,6 +11,32 @@ RSpec.describe Appointment, type: :model do
   it { is_expected.to have_many(:procedures) }
   it { is_expected.to have_many(:appointment_statuses) }
 
+  context 'class methods' do
+    describe '#destroy' do
+      before :each do
+        protocol = create(:protocol)
+        arm = create(:arm, protocol: protocol)
+        participant = create(:participant, protocol: protocol, arm: arm)
+        @appt = create(:appointment, arm: arm, name: "Visit 1", participant: participant)
+      end
+
+      it 'should not destroy if procedure data' do
+        @proc1 = create(:procedure, :complete, appointment: @appt)
+        @proc2 = create(:procedure, appointment: @appt)
+
+        @appt.destroy
+        expect(@appt.deleted_at).to be nil
+      end
+
+      it 'should destroy if no procedure data' do
+        @proc2 = create(:procedure, appointment: @appt)
+
+        @appt.destroy
+        expect(@appt.deleted_at).to_not be nil
+      end
+    end
+  end
+
   context 'instance methods' do
     describe 'validations' do
       it 'should validate properly' do
@@ -25,26 +51,6 @@ RSpec.describe Appointment, type: :model do
         @appt.arm_id = arm.id
         @appt.name = "Visit 1"
         expect(@appt.valid?).to be true
-      end
-    end
-
-    describe 'has_completed_procedures?' do
-      before :each do
-        protocol = create(:protocol)
-        arm = create(:arm, protocol: protocol)
-        participant = create(:participant, protocol: protocol, arm: arm)
-        @appt = create(:appointment, arm: arm, name: "Visit 1", participant: participant)
-        @proc1 = create(:procedure, :complete, appointment: @appt)
-        @proc2 = create(:procedure, appointment: @appt)
-      end
-
-      it 'should return true when appt has completed procedures' do
-        expect(@appt.has_completed_procedures?).to be true
-      end
-
-      it 'should return false when appt doesnt have completed procedures' do
-        @proc1.update_attributes(status: "unstarted")
-        expect(@appt.has_completed_procedures?).to be false
       end
     end
 

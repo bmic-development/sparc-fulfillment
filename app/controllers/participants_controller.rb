@@ -50,8 +50,11 @@ class ParticipantsController < ApplicationController
 
   def destroy
     @protocol_id = @participant.protocol_id
-    @participant.destroy
-    flash[:alert] = t(:participant)[:flash_messages][:removed]
+    if @participant.destroy
+      flash[:alert] = t(:participant)[:flash_messages][:removed]
+    else
+      @errors = @participant.errors
+    end
   end
 
   def update_arm

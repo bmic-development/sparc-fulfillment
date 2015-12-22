@@ -81,12 +81,15 @@ RSpec.describe VisitGroup, type: :model do
           @arm = create(:arm, protocol: @protocol)
           @arm.visit_groups.each{|vg| vg.destroy}
           @arm.reload
-          @vg_a        = create(:visit_group, name: 'A', position: 1, arm_id: @arm.id)
-          @vg_b        = create(:visit_group, name: 'B', position: 2, arm_id: @arm.id)
-          @vg_c        = create(:visit_group, name: 'C', position: 3, arm_id: @arm.id)
-          @participant = create(:participant, arm: @arm, protocol: @protocol)
-          @appointment = create(:appointment, visit_group: @vg_a, participant: @participant, name: @vg_a.name, arm_id: @vg_a.arm_id)
-          @procedure   = create(:procedure, :complete, appointment: @appointment)
+          @vg_a         = create(:visit_group, name: 'A', position: 1, arm_id: @arm.id)
+          @vg_b         = create(:visit_group, name: 'B', position: 2, arm_id: @arm.id)
+          @vg_c         = create(:visit_group, name: 'C', position: 3, arm_id: @arm.id)
+          @participant  = create(:participant, arm: @arm, protocol: @protocol)
+          @participant2 = create(:participant, arm: @arm, protocol: @protocol)
+          @appointment  = create(:appointment, visit_group: @vg_a, participant: @participant, name: @vg_a.name, arm_id: @vg_a.arm_id)
+          @appointment2 = create(:appointment, visit_group: @vg_a, participant: @participant2, name: @vg_a.name, arm_id: @vg_a.arm_id)
+          @procedure    = create(:procedure, :complete, appointment: @appointment)
+          @procedure2   = create(:procedure, :unstarted, appointment: @appointment2)
         end
 
       describe 'reorder' do
@@ -113,23 +116,13 @@ RSpec.describe VisitGroup, type: :model do
         end
       end
 
-      describe 'check for completed data' do
+      describe 'remove appointments' do
 
-        it "should allow the appointment to be deleted if it is not completed" do
-          @procedure.update_attributes(status: "unstarted")
+        it "should delete appointments that do not have data, and preserve appointments with procedure data" do
+          expect(@arm.appointments.size).to eq(2)
           @vg_a.destroy
-          expect(@participant.appointments.empty?).to eq(true)
-        end
-
-        it "should not allow the appointment to be deleted if it is completed" do
-          @appointment.update_attributes(completed_date: Time.current)
-          @vg_a.destroy
-          expect(@participant.appointments.empty?).to eq(false)
-        end
-
-        it "should not allow the appointment to be deleted if any of it's procedures are completed" do
-          @vg_a.destroy
-          expect(@participant.appointments.empty?).to eq(false)
+          expect(@arm.appointments.size).to eq(1)
+          expect(@arm.appointments.first.id).to eq(@appointment.id)
         end
       end
     end
