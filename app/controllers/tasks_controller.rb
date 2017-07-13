@@ -25,6 +25,8 @@ class TasksController < ApplicationController
   respond_to :json, :html
 
   def index
+    @task_id = params[:id]
+
     respond_to do |format|
       format.html { render }
       format.json do
@@ -88,7 +90,7 @@ class TasksController < ApplicationController
     if create_procedure_note?
       @appointment = @procedure.present? ? @procedure.appointment : Procedure.find(task_params[:notes][:notable_id]).appointment
       @statuses = @appointment.appointment_statuses.map{|x| x.status}
-      
+
       notes_params = task_params[:notes]
       notes_params[:identity] = current_identity
 
